@@ -73,31 +73,53 @@ public class Cliente {
 		}
 		
 		respuesta = lector.readLine();
-		if (respuesta.equals(OK)) {
+		int tamanioBytes = 0;
+		if (respuesta.equals(ESTADO + ":" + OK)) {
 			escritor.println(CERTCLNT);
 
 			try {
 				java.security.cert.X509Certificate cert = certificado();
-				byte[] myByte = cert.getEncoded();
+				byte[] myByte = cert.getEncoded(); 
+				tamanioBytes = myByte.length;
 				socket.getOutputStream().write(myByte);
 				socket.getOutputStream().flush();
 			} catch (Exception e) {} 
-		} else if (respuesta.equals(ERROR)) {
+		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
 			System.out.println("ERROR: El servidor no es compatible con los algoritmos de encriptación.");
+			return;
 		} else {
 			System.out.println("ERROR: Mensaje erróneo del servidor: " + respuesta);
 			return;
 		}
 		
 		respuesta = lector.readLine();
-		if (respuesta.equals(OK)) {
-			
-		} else if (respuesta.equals(ERROR)) {
+		if (respuesta.equals(ESTADO + ":" + OK)) {
+			respuesta = lector.readLine();
+			byte[] certificadoSrv = new byte[tamanioBytes];
+			if (respuesta.equals(CERTSRV)) {
+				socket.getInputStream().read(certificadoSrv);
+				//X509Certificate caCert =  certificadoSrv.;
+				boolean todoBien = false;
+				
+				if (todoBien) {
+					escritor.println(ESTADO + ":" + OK);
+				} else {
+					escritor.println(ESTADO + ":" + ERROR);
+					System.out.println("Error: El certificado no es valido.");
+					return;
+				}
+				
+			}
+		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
 			System.out.println("ERROR: El servidor envió ERROR como respuesta.");
+			return;
 		} else {
 			System.out.println("ERROR: Mensaje erróneo del servidor: " + respuesta);
 			return;
 		}
+		
+		
+		
 		
 		
 	}
