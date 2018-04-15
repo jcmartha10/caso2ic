@@ -1,19 +1,25 @@
 package logica;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
@@ -25,7 +31,6 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.x500.X500Principal;
 
-import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
@@ -44,24 +49,26 @@ public class Cliente {
 	private final String CERTSRV = "CERTSRV";
 	private final String ACT1 = "ACT1";
 	private final String ACT2 = "ACT2";
-	private final String SEPARADOR = "SEPARADOR";
 	private final String[] ALGS  = {"RSA"};
 	
 	private String posicion;
+	private String posicion2;
 	private Socket socket;
 	PrintWriter escritor;
 	BufferedReader lector;
 	
 	public Cliente() {
 		posicion = "41 24.2028, 2 10.4418";
+		posicion2 = "42 24.2028, 3 10.4418";
 		socket = new Socket();
+		
 		try {
 			escritor = new PrintWriter(socket.getOutputStream(), true);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		} catch (IOException e) {}
 	}
 	
-	public void ejecutar() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+	public void ejecutar() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IllegalStateException, SignatureException, NoSuchProviderException, CertificateException {
 		String respuesta = "";
 		escritor.print(HOLA);
 		
@@ -77,18 +84,16 @@ public class Cliente {
 			return;
 		}
 		
+		java.security.cert.X509Certificate certClt;
 		respuesta = lector.readLine();
 		int tamanioBytes = 0;
 		if (respuesta.equals(ESTADO + ":" + OK)) {
 			escritor.println(CERTCLNT);
-
-			try {
-				java.security.cert.X509Certificate cert = certificado();
-				byte[] myByte = cert.getEncoded(); 
-				tamanioBytes = myByte.length;
-				socket.getOutputStream().write(myByte);
-				socket.getOutputStream().flush();
-			} catch (Exception e) {} 
+			certClt = certificado();
+			byte[] myByte = certClt.getEncoded(); 
+			tamanioBytes = myByte.length;
+			socket.getOutputStream().write(myByte);
+			socket.getOutputStream().flush();
 		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
 			System.out.println("ERROR: El servidor no es compatible con los algoritmos de encriptación.");
 			return;
@@ -101,25 +106,21 @@ public class Cliente {
 		if (respuesta.equals(ESTADO + ":" + OK)) {
 			respuesta = lector.readLine();
 			byte[] certificadoSrv = new byte[tamanioBytes];
+			
 			if (respuesta.equals(CERTSRV)) {
 				socket.getInputStream().read(certificadoSrv);
-				//X509Certificate caCert =  certificadoSrv.;
-				boolean todoBien = false;
+				CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+				InputStream in = new ByteArrayInputStream(certificadoSrv);
+				X509Certificate certSrv = (X509Certificate)certFactory.generateCertificate(in);
 				
-				if (todoBien) {
+				if (certClt.equals(certSrv)) {
 					escritor.println(ESTADO + ":" + OK);
 				} else {
 					escritor.println(ESTADO + ":" + ERROR);
 					System.out.println("Error: El certificado no es valido.");
 					return;
 				}
-				byte[] l = new byte[256];
-				socket.getInputStream().read(l);
-				SecretKeySpec skc = new SecretKeySpec(l, "AES");
-				Cipher ca = Cipher.getInstance("AES/CBC/PKCS7Padding");
-				ca.init(Cipher.DECRYPT_MODE, skc);
-				byte[] decryptedBytes = ca.doFinal(l);
-				String decryptedString = new String(decryptedBytes);
+				
 			}
 		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
 			System.out.println("ERROR: El servidor envió ERROR como respuesta.");
@@ -129,9 +130,38 @@ public class Cliente {
 			return;
 		}
 		
+		respuesta = lector.readLine();
+		if (respuesta.split(":")[0].equals(INICIO)) {
+			byte[] l = new byte[256];
+			socket.getInputStream().read(l);
+			SecretKeySpec skc = new SecretKeySpec(l, "AES");
+			Cipher ca = Cipher.getInstance("AES/CBC/PKCS7Padding");
+			ca.init(Cipher.DECRYPT_MODE, skc);
+			byte[] decryptedBytes = ca.doFinal(l);
+			//String decryptedString = new String(decryptedBytes);
+			Key key = new SecretKeySpec(decryptedBytes, 0, decryptedBytes.length, "AES");
+			
+			ca.init(Cipher.ENCRYPT_MODE, key);
+			byte[] posEncriptado = ca.doFinal(posicion.getBytes());
+			
+			MessageDigest md5 = MessageDigest.getInstance("MD5");
+			md5.update(posicion.getBytes());
+			byte[] elHash = md5.digest();
+			
+			escritor.println(ACT1 + ":" + posEncriptado);
+			escritor.println(ACT2 + ":" + elHash);
+		}
 		
-		
-		
+		respuesta = lector.readLine();
+		if (respuesta.equals(ESTADO + ":" + OK)) {
+			System.out.println("OK: Mensaje encriptado y enviado correctamente.");
+		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
+			System.out.println("ERROR: El servidor respondió con error a los mensajes encriptados.");
+			return;
+		} else {
+			System.out.println("ERROR: Mensaje erróneo del servidor: " + respuesta);
+			return;
+		}
 		
 	}
 
@@ -159,6 +189,10 @@ public class Cliente {
 		certGen.addExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(keyPair.getPublic().getEncoded() ));
 		 
 		X509Certificate cert = certGen.generate(caKey, "BC");   // note: private key of CA
-		return null;
+		return cert;
+	}
+	
+	public static void main(String[] args) {
+		
 	}
 }
