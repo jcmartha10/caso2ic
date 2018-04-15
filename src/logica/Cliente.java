@@ -18,6 +18,11 @@ import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.asn1.ASN1OctetString;
@@ -56,7 +61,7 @@ public class Cliente {
 		} catch (IOException e) {}
 	}
 	
-	public void ejecutar() throws IOException {
+	public void ejecutar() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		String respuesta = "";
 		escritor.print(HOLA);
 		
@@ -108,7 +113,13 @@ public class Cliente {
 					System.out.println("Error: El certificado no es valido.");
 					return;
 				}
-				
+				byte[] l = new byte[256];
+				socket.getInputStream().read(l);
+				SecretKeySpec skc = new SecretKeySpec(l, "AES");
+				Cipher ca = Cipher.getInstance("AES/CBC/PKCS7Padding");
+				ca.init(Cipher.DECRYPT_MODE, skc);
+				byte[] decryptedBytes = ca.doFinal(l);
+				String decryptedString = new String(decryptedBytes);
 			}
 		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
 			System.out.println("ERROR: El servidor envió ERROR como respuesta.");
