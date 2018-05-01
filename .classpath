@@ -5,5 +5,7 @@
 	<classpathentry kind="lib" path="src/librerias/bcpg-jdk15on-159.jar"/>
 	<classpathentry kind="lib" path="src/librerias/bcpkix-jdk15on-159.jar"/>
 	<classpathentry kind="lib" path="src/librerias/bcprov-jdk15on-159.jar"/>
+	<classpathentry kind="lib" path="src/librerias/Servidorcs.jar"/>
+	<classpathentry kind="lib" path="src/librerias/Servidorss.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
