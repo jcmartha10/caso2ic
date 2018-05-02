@@ -3,6 +3,8 @@ package logica;
 import java.awt.FontFormatException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -67,10 +69,13 @@ public class Cliente {
 	private PrivateKey llavePrivada;
 	private X509Certificate certificadoServidor;
 	
-	public Cliente() throws UnknownHostException, IOException {
+	private int id;
+	
+	public Cliente(int id) throws UnknownHostException, IOException {
 		posicion = "41 24.2028, 2 10.4418";
-		socket = new Socket("localhost", 4321);
-
+		socket = new Socket("172.24.42.88", 4321);
+		this.id=id;
+		
 		try {
 			escritor = new PrintWriter(socket.getOutputStream(), true);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -78,6 +83,10 @@ public class Cliente {
 	}
 	
 	public void ejecutar() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IllegalStateException, SignatureException, NoSuchProviderException, CertificateException {
+		File file = new File("./data/datos.csv");
+		PrintWriter csv = new PrintWriter(new FileWriter(file, true));
+		//csv.println("Cliente,TiempoLLave,TiempoActualizacion");
+		csv.print("Cliente"+id+",");
 		String respuesta = "";
 		escritor.println(HOLA);
 		
@@ -137,61 +146,78 @@ public class Cliente {
 		}
 		
 		respuesta = "";
+		//Inicia el proceso de la llave simétrica
+		long startTime = System.currentTimeMillis();
 		respuesta = lector.readLine();
 		
-		String[] resp = respuesta.split(":");
+		//8String[] resp = respuesta.split(":");
 		System.out.println(respuesta);
-		System.out.println(resp[0]);
-		if (resp[0].equals(INICIO)) {
-			String ll = resp[1];
-			System.out.println("01");
-			Cipher decifrador = Cipher.getInstance(ALGS[1]);
-			System.out.println("02");
-			decifrador.init(Cipher.DECRYPT_MODE, llavePrivada);
-			System.out.println("03");
-			byte[] c = DatatypeConverter.parseHexBinary(ll);
-			System.out.println("04");
-			byte[] descifrado = decifrador.doFinal(c);
-			System.out.println("1");
-			SecretKey key = new SecretKeySpec(descifrado, 0, descifrado.length, ALGS[0]); //Obtenemos la llave secreta
-			
-			
-			decifrador=Cipher.getInstance(ALGS[0]);
-			System.out.println("8");
-			decifrador.init(Cipher.ENCRYPT_MODE, key);
-			System.out.println("9");
-			byte[] posEncriptado = decifrador.doFinal(posicion.getBytes()); //Encriptamos la posicion con la llave secreta
-			System.out.println("10");
+		//8System.out.println(resp[0]);
+		if (respuesta.equals(INICIO)) {
+			//8String ll = resp[1];
+			//System.out.println("01");
+			//8Cipher decifrador = Cipher.getInstance(ALGS[1]);
+			//System.out.println("02");
+			//8decifrador.init(Cipher.DECRYPT_MODE, llavePrivada);
+			//System.out.println("03");
+			//8byte[] c = DatatypeConverter.parseHexBinary(ll);
+			//System.out.println("04");
+			//8byte[] descifrado = decifrador.doFinal(c);
+			//System.out.println("1");
+			//8SecretKey key = new SecretKeySpec(descifrado, 0, descifrado.length, ALGS[0]); //Obtenemos la llave secreta
+			//Termina el proceso de la llave simétrica
+			long elapsedTime = System.currentTimeMillis() - startTime;
+			long elapsedSeconds = elapsedTime / 1000;
+			long secondsDisplay = elapsedSeconds % 60;
+			long elapsedMinutes = elapsedSeconds / 60;
+			System.out.println(elapsedTime);
+			csv.print(elapsedTime+",");
+			//8decifrador=Cipher.getInstance(ALGS[0]);
+			//System.out.println("8");
+			//8decifrador.init(Cipher.ENCRYPT_MODE, key);
+			//System.out.println("9");
+			//8byte[] posEncriptado = decifrador.doFinal(posicion.getBytes()); //Encriptamos la posicion con la llave secreta
+			//System.out.println("10");
 			
 			/*Mac mac = Mac.getInstance(ALGS[2]);
 			mac.init(key);
 			byte[] posHash = DatatypeConverter.parseHexBinary(posicion);
 			byte[] elHash = mac.doFinal(posHash);*/
 			
-			MessageDigest md5 = MessageDigest.getInstance("MD5");
+			//8MessageDigest md5 = MessageDigest.getInstance("MD5");
 			//md5.update(posicion.getBytes());
-			byte[] elHash = md5.digest(posicion.getBytes());
+			//8byte[] elHash = md5.digest(posicion.getBytes());
 			
-			System.out.println("12");
+			//System.out.println("12");
 			//byte[] elHash = md5.digest();
-			System.out.println("13");
-			System.out.println(posEncriptado);
-			decifrador=Cipher.getInstance(ALGS[1]);
-			System.out.println("8");
-			decifrador.init(Cipher.ENCRYPT_MODE, certificadoServidor.getPublicKey());
-			System.out.println("9");
-			byte[] posHashEncriptado = decifrador.doFinal(elHash);
-			System.out.println("10");
-			System.out.println("Hash md5 del cliente: " + DatatypeConverter.printHexBinary(elHash));
+			//System.out.println("13");
+			//8System.out.println(posEncriptado);
+			//8decifrador=Cipher.getInstance(ALGS[1]);
+			//System.out.println("8");
+			//8decifrador.init(Cipher.ENCRYPT_MODE, certificadoServidor.getPublicKey());
+			//System.out.println("9");
+			//8byte[] posHashEncriptado = decifrador.doFinal(elHash);
+			//System.out.println("10");
+			//8System.out.println("Hash md5 del cliente: " + DatatypeConverter.printHexBinary(elHash));
 			
-			escritor.println(ACT1 + ":" + DatatypeConverter.printHexBinary(posEncriptado));
-			System.out.println("14");
+			//8escritor.println(ACT1 + ":" + DatatypeConverter.printHexBinary(posEncriptado));
+			escritor.println(ACT1);
+			startTime = System.currentTimeMillis();
+			//System.out.println("14");
 			//System.out.println(DatatypeConverter.printHexBinary(posHashEncriptado));
-			escritor.println(ACT2 + ":" + DatatypeConverter.printHexBinary(posHashEncriptado));
-			System.out.println("15");
+			//8escritor.println(ACT2 + ":" + DatatypeConverter.printHexBinary(posHashEncriptado));
+			escritor.println(ACT2);
+			//System.out.println("15");
 		}
 		
 		respuesta = lector.readLine();
+		long elapsedTime = System.currentTimeMillis() - startTime;
+		long elapsedSeconds = elapsedTime / 1000;
+		long secondsDisplay = elapsedSeconds % 60;
+		long elapsedMinutes = elapsedSeconds / 60;
+		System.out.println(elapsedTime);
+		csv.println(elapsedTime);
+		csv.close();
 		if (respuesta.equals(ESTADO + ":" + OK)) {
 			System.out.println("OK: Mensaje encriptado y enviado correctamente.");
 		} else if (respuesta.equals(ESTADO + ":" + ERROR)) {
@@ -240,11 +266,12 @@ public class Cliente {
 	    
 	    return certificate;
 	}
-	
+/**
 	public static void main(String[] args) {
 		try {
-			Cliente c = new Cliente();
+			Cliente c = new Cliente(1);
 			c.ejecutar();
 		} catch (Exception e) {e.printStackTrace();}
 	}
+*/
 }
